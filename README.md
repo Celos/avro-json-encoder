@@ -35,8 +35,8 @@ with
 ```java
 ExtendedJsonEncoder encoder = new ExtendedJsonEncoder(SCHEMA, OUTPUT_STREAM);
 ```
-and pass it to your writer, as usual:
+and pass it to the new ExtendedGenericDatumWriter:
 ```java
-SpecificDatumWriter<T> writer = new SpecificDatumWriter<>(SCHEMA_OR_CLASS);
+DatumWriter<T> writer = new ExtendedGenericDatumWriter<>(SCHEMA_OR_CLASS);
 writer.write(DATA, encoder);
 ```
