@@ -19,7 +19,7 @@ import org.codehaus.jackson.util.DefaultPrettyPrinter;
 import org.codehaus.jackson.util.MinimalPrettyPrinter;
 
 public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.ActionHandler {
-	
+
 	private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 	private static final String CHARSET = "ISO-8859-1";
 	final Parser parser;
@@ -28,25 +28,25 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 	 * Has anything been written into the collections?
 	 */
 	protected BitSet isEmpty = new BitSet();
-	
+
 	public ExtendedJsonEncoder(Schema sc, OutputStream out) throws IOException {
 		this(sc, getJsonGenerator(out, false));
 	}
-	
+
 	public ExtendedJsonEncoder(Schema sc, OutputStream out, boolean pretty) throws IOException {
 		this(sc, getJsonGenerator(out, pretty));
 	}
-	
+
 	public ExtendedJsonEncoder(Schema sc, JsonGenerator out) throws IOException {
 		configure(out);
 		this.parser =
 				new Parser(new JsonGrammarGenerator().generate(sc), this);
 	}
-	
+
 	public Parser getParser() {
 		return parser;
 	}
-	
+
 	@Override
 	public void flush() throws IOException {
 		parser.processImplicitActions();
@@ -54,7 +54,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 			out.flush();
 		}
 	}
-	
+
 	// by default, one object per line.
 	// with pretty option use default pretty printer with root line separator.
 	private static JsonGenerator getJsonGenerator(OutputStream out, boolean pretty)
@@ -80,7 +80,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		}
 		return g;
 	}
-	
+
 	/**
 	 * Reconfigures this JsonEncoder to use the output stream provided.
 	 * <p/>
@@ -99,7 +99,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		this.configure(getJsonGenerator(out, false));
 		return this;
 	}
-	
+
 	/**
 	 * Reconfigures this JsonEncoder to output to the JsonGenerator provided.
 	 * <p/>
@@ -124,48 +124,48 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		this.out = generator;
 		return this;
 	}
-	
+
 	@Override
 	public void writeNull() throws IOException {
 		parser.advance(Symbol.NULL);
 		out.writeNull();
 	}
-	
+
 	@Override
 	public void writeBoolean(boolean b) throws IOException {
 		parser.advance(Symbol.BOOLEAN);
 		out.writeBoolean(b);
 	}
-	
+
 	@Override
 	public void writeInt(int n) throws IOException {
 		parser.advance(Symbol.INT);
 		out.writeNumber(n);
 	}
-	
+
 	@Override
 	public void writeLong(long n) throws IOException {
 		parser.advance(Symbol.LONG);
 		out.writeNumber(n);
 	}
-	
+
 	@Override
 	public void writeFloat(float f) throws IOException {
 		parser.advance(Symbol.FLOAT);
 		out.writeNumber(f);
 	}
-	
+
 	@Override
 	public void writeDouble(double d) throws IOException {
 		parser.advance(Symbol.DOUBLE);
 		out.writeNumber(d);
 	}
-	
+
 	@Override
 	public void writeString(Utf8 utf8) throws IOException {
 		writeString(utf8.toString());
 	}
-	
+
 	@Override
 	public void writeString(String str) throws IOException {
 		parser.advance(Symbol.STRING);
@@ -176,7 +176,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 			out.writeString(str);
 		}
 	}
-	
+
 	@Override
 	public void writeBytes(ByteBuffer bytes) throws IOException {
 		if (bytes.hasArray()) {
@@ -187,19 +187,19 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 			writeBytes(b);
 		}
 	}
-	
+
 	@Override
 	public void writeBytes(byte[] bytes, int start, int len) throws IOException {
 		parser.advance(Symbol.BYTES);
 		writeByteArray(bytes, start, len);
 	}
-	
+
 	private void writeByteArray(byte[] bytes, int start, int len)
 			throws IOException {
 		out.writeString(
 				new String(bytes, start, len, CHARSET));
 	}
-	
+
 	@Override
 	public void writeFixed(byte[] bytes, int start, int len) throws IOException {
 		parser.advance(Symbol.FIXED);
@@ -211,7 +211,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		}
 		writeByteArray(bytes, start, len);
 	}
-	
+
 	@Override
 	public void writeEnum(int e) throws IOException {
 		parser.advance(Symbol.ENUM);
@@ -223,7 +223,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		}
 		out.writeString(top.getLabel(e));
 	}
-	
+
 	@Override
 	public void writeArrayStart() throws IOException {
 		parser.advance(Symbol.ARRAY_START);
@@ -231,7 +231,7 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		push();
 		isEmpty.set(depth());
 	}
-	
+
 	@Override
 	public void writeArrayEnd() throws IOException {
 		if (! isEmpty.get(pos)) {
@@ -241,27 +241,27 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		parser.advance(Symbol.ARRAY_END);
 		out.writeEndArray();
 	}
-	
+
 	@Override
 	public void writeMapStart() throws IOException {
 		push();
 		isEmpty.set(depth());
-		
+
 		parser.advance(Symbol.MAP_START);
 		out.writeStartObject();
 	}
-	
+
 	@Override
 	public void writeMapEnd() throws IOException {
 		if (! isEmpty.get(pos)) {
 			parser.advance(Symbol.ITEM_END);
 		}
 		pop();
-		
+
 		parser.advance(Symbol.MAP_END);
 		out.writeEndObject();
 	}
-	
+
 	@Override
 	public void startItem() throws IOException {
 		if (! isEmpty.get(pos)) {
@@ -270,20 +270,27 @@ public class ExtendedJsonEncoder extends ParsingEncoder implements Parser.Action
 		super.startItem();
 		isEmpty.clear(depth());
 	}
-	
+
 	@Override
 	public void writeIndex(int unionIndex) throws IOException {
 		parser.advance(Symbol.UNION);
 		Symbol.Alternative top = (Symbol.Alternative) parser.popSymbol();
 		Symbol symbol = top.getSymbol(unionIndex);
-		if (symbol != Symbol.NULL) {
+		if (symbol != Symbol.NULL && !isNullableSingle(top)) {
 			out.writeStartObject();
 			out.writeFieldName(top.getLabel(unionIndex));
 			parser.pushSymbol(Symbol.UNION_END);
 		}
 		parser.pushSymbol(symbol);
 	}
-	
+
+	/**
+	 * Taken from zolyfarkas/avro project on github
+	 */
+	private static boolean isNullableSingle(final Symbol.Alternative top) {
+		return top.size() == 2 && ("null".equals(top.getLabel(0)) || "null".equals(top.getLabel(1)));
+	}
+
 	@Override
 	public Symbol doAction(Symbol input, Symbol top) throws IOException {
 		if (top instanceof Symbol.FieldAdjustAction) {
